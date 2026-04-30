@@ -44,3 +44,6 @@ TypeScript, Node.js, Express, Next.js, Prisma, PostgreSQL, Redis, Turborepo, Bun
 Node.js 18 or higher, Bun 1.2+, a running PostgreSQL instance, a running Redis instance.
 
 
+**Screenshots**
+
+<img width="1858" height="816" alt="Screenshot 2026-04-30 185445" src="https://github.com/user-attachments/assets/28c14c0d-0c39-4e32-b22d-b633bcb62019" />
