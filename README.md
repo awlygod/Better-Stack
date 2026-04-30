@@ -43,4 +43,4 @@ TypeScript, Node.js, Express, Next.js, Prisma, PostgreSQL, Redis, Turborepo, Bun
 
 Node.js 18 or higher, Bun 1.2+, a running PostgreSQL instance, a running Redis instance.
 
-**Install dependencies**
+
