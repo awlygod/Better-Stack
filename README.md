@@ -1,49 +1,145 @@
-# BetterUptime
+# BetterStack
 
-A distributed website uptime monitoring system built as a monorepo. It checks whether your websites are up or down by polling them from multiple regions and recording response times.
+A distributed website uptime monitoring system. Add any URL and BetterStack continuously checks if it's up, measures response time, and keeps a history of health checks, all powered by a Redis-backed worker queue that scales horizontally across regions.
 
-## Architecture
+---
 
-The system is composed of four applications and several shared packages managed with Turborepo and Bun workspaces.
+## How it works
 
-**Apps**
 
-| Name | Purpose |
-|------|---------|
-| api | REST API built with Express. Handles user auth, website registration, and status queries. |
-| worker | Background worker that reads URLs from a Redis stream, pings them with HTTP requests, and writes tick results to the database. |
-| pusher | Real-time event pusher for broadcasting status updates. |
-| web | Next.js frontend for the dashboard. |
-| tests | Integration test suite using Vitest. |
+<img width="1820" height="723" alt="image" src="https://github.com/user-attachments/assets/abd3737e-ff9d-4611-b6e1-adb50c15f298" />
 
-**Packages**
 
-| Name | Purpose |
-|------|---------|
-| store | Prisma client and database models (PostgreSQL). |
-| redisstream | Shared Redis stream helpers (xReadGroup, xAckBulk). |
-| ui | Shared React component library. |
-| eslint-config | Shared ESLint configurations. |
-| typescript-config | Shared TypeScript configurations. |
 
-## How It Works
+1. **Pusher** queries all websites every 30 seconds and pushes them into a Redis stream
+2. **Workers** read from the stream, make HTTP requests to each URL, record the status and response time
+3. **API** serves the results to the frontend on demand
+4. **Frontend** shows live status, response times, and the last 10 health checks per site
 
-1. A user registers a website URL via the API.
-2. URLs are pushed into a Redis stream partitioned by region.
-3. One or more workers consume the stream, perform HTTP GET requests, and record the response time and status (Up or Down) as a `website_tick` in the database.
-4. The API exposes the latest tick data so the frontend can display current status.
+Multiple workers can run in parallel across different regions, they share the same consumer group so there's no duplicate processing.
+
+---
 
 ## Tech Stack
 
-TypeScript, Node.js, Express, Next.js, Prisma, PostgreSQL, Redis, Turborepo, Bun
+| Layer | Tech |
+|---|---|
+| Frontend | React 19, TypeScript |
+| API | Express.js, JWT, Zod |
+| Queue | Redis Streams (consumer groups) |
+| Database | PostgreSQL + Prisma ORM |
+| Monorepo | Turborepo + Bun |
+| Infra | Docker (Postgres + Redis) |
+
+---
+
+## Project Structure
+
+```
+betterstack/
+├── apps/
+│   ├── api/        # Express REST API (port 3001)
+│   ├── web/        # Next.js frontend (port 3000)
+│   ├── worker/     # Health check worker (scalable)
+│   ├── pusher/     # Feeds websites into Redis queue
+│   └── tests/      # Vitest test suite
+└── packages/
+    ├── store/      # Prisma schema + DB models
+    └── redisstream/ # Redis stream helpers
+```
+
+---
 
 ## Getting Started
 
-**Prerequisites**
+**Prerequisites:** Docker, Bun
 
-Node.js 18 or higher, Bun 1.2+, a running PostgreSQL instance, a running Redis instance.
+**1. Start infrastructure**
+```bash
+docker-compose up -d
+```
+
+**2. Set up the database**
+```bash
+cd packages/store && bunx prisma db push
+```
+
+**3. Configure environment variables**
+
+Each app has its own `.env`. The key ones:
+
+```bash
+# apps/api/.env
+DATABASE_URL= your_database_url
+JWT_SECRET=your_secret_key
+PORT= port_name
+
+# apps/worker/.env
+DATABASE_URL=...
+REDIS_URL= your_redis_url
+REGION_ID= redis_id
+WORKER_ID= worker_id
+
+# apps/pusher/.env
+DATABASE_URL=...
+REDIS_URL= ...
+
+# apps/web/.env.local
+NEXT_PUBLIC_API_URL= ...
+```
+
+**4. Run all services** (separate terminals)
+
+```bash
+cd apps/api     && bun run index.ts
+cd apps/web     && bun run dev
+cd apps/pusher  && bun run index.ts
+cd apps/worker  && bun run index.ts
+```
+
+---
+
+## Scaling Workers
+
+Run multiple workers by changing `WORKER_ID` and optionally `REGION_ID`:
+
+```bash
+REGION_ID=us-east  WORKER_ID=worker-1 bun run index.ts
+REGION_ID=eu-west  WORKER_ID=worker-2 bun run index.ts
+REGION_ID=ap-south WORKER_ID=worker-3 bun run index.ts
+```
+
+Each instance pulls from the same Redis consumer group, no coordination needed, no duplicate checks.
+
+---
+
+## API Reference
+
+```
+POST /user/signup       { username, password }
+POST /user/signin       { username, password }
+POST /website           
+GET  /website/all                             
+GET  /status/:id                              
+GET  /health
+```
+
+---
+
+## Features
+
+- JWT authentication
+- Add unlimited websites to monitor
+- Health checks every ~30 seconds
+- Response time tracking (ms)
+- Last 10 checks per website with timestamps
+- Regional worker tagging
+- Horizontally scalable worker pool
+- Fully typed with TypeScript throughout
+
+## Screenshots
+<img width="1846" height="808" alt="Screenshot 2026-05-03 194838" src="https://github.com/user-attachments/assets/89bc65b2-53d4-40f4-9f24-02e1a0c8f611" />
+<img width="1844" height="899" alt="Screenshot 2026-05-03 194946" src="https://github.com/user-attachments/assets/85eada89-b8fa-4e87-b784-d8f37b61f5c3" />
+<img width="603" height="742" alt="Screenshot 2026-05-03 194958" src="https://github.com/user-attachments/assets/80fe48f1-c440-4d55-a281-8d6f60e6d656" />
 
 
-**Screenshots**
-
-<img width="1858" height="816" alt="Screenshot 2026-04-30 185445" src="https://github.com/user-attachments/assets/28c14c0d-0c39-4e32-b22d-b633bcb62019" />
