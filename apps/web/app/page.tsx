@@ -40,7 +40,7 @@ export default function Home() {
         setError(errorMsg);
         return;
       }
-      setError("✅ Signup successful. Now sign in.");
+      setError(" Signup successful. Now sign in.");
       setUsername("");
       setPassword("");
     } catch (e: any) {
@@ -63,7 +63,7 @@ export default function Home() {
       }
       setJwt(data.jwt);
       localStorage.setItem("jwt", data.jwt);
-      setError("✅ Signed in!");
+      setError(" Signed in!");
       setUsername("");
       setPassword("");
     } catch (e: any) {
@@ -103,7 +103,7 @@ export default function Home() {
         return;
       }
       setNewUrl("");
-      setError("✅ Website added!");
+      setError("Website added!");
       fetchWebsites();
     } catch (e: any) {
       setError(`Error: ${e.message}`);
