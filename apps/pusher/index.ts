@@ -1,22 +1,34 @@
+import "dotenv/config";
 import { prismaClient } from "store/client";
 import { xAddBulk } from "redisstream/client";
 
-async function main() {
-    let websites = await prismaClient.website.findMany({
-        select: {
-            url: true,
-            id: true
-        }
-    })
-  
-    await xAddBulk(websites.map(w => ({
-        url: w.url,
-        id: w.id
-    })));
+async function pushWebsitesToQueue() {
+  try {
+    // Pull all websites from database
+    const websites = await prismaClient.website.findMany({
+      select: {
+        id: true,
+        url: true,
+      },
+    });
+
+    if (websites.length === 0) {
+      console.log("No websites to push");
+      return;
+    }
+
+    // Push all to Redis stream
+    await xAddBulk(websites);
+    console.log(`✅ Pushed ${websites.length} websites to queue`);
+  } catch (error) {
+    console.error("Error pushing websites:", error);
+  }
 }
 
-setInterval(() => {
-    main()
-}, 3 * 1000 * 60)
+// Run every 30 seconds
+setInterval(pushWebsitesToQueue, 30000);
 
-main()
+// Run once on startup
+pushWebsitesToQueue();
+
+console.log("🔔 Pusher running (pushes websites every 30s)");

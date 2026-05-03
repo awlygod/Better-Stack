@@ -1,3 +1,4 @@
+import "dotenv/config";
 import axios from "axios";
 import { xAckBulk, xReadGroup } from "redisstream/client";
 import { prismaClient } from "store/client";
@@ -6,66 +7,84 @@ const REGION_ID = process.env.REGION_ID!;
 const WORKER_ID = process.env.WORKER_ID!;
 
 if (!REGION_ID) {
-    throw new Error("Region not provided");
+  throw new Error("REGION_ID not provided");
 }
 
 if (!WORKER_ID) {
-    throw new Error("Region not provided");
+  throw new Error("WORKER_ID not provided");
 }
 
-// Ensure the region row exists before writing ticks
-await prismaClient.region.upsert({
+async function ensureRegionExists() {
+  await prismaClient.region.upsert({
     where: { id: REGION_ID },
     update: {},
     create: { id: REGION_ID, name: REGION_ID },
-});
+  });
+}
+
+async function fetchWebsite(
+  url: string,
+  websiteId: string
+): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const startTime = Date.now();
+
+    axios
+      .get(url, { timeout: 10000 })
+      .then(async () => {
+        const endTime = Date.now();
+        await prismaClient.website_tick.create({
+          data: {
+            response_time_ms: endTime - startTime,
+            status: "Up",
+            region_id: REGION_ID,
+            website_id: websiteId,
+          },
+        });
+        console.log(` ${url} is UP (${endTime - startTime}ms)`);
+        resolve();
+      })
+      .catch(async (error) => {
+        const endTime = Date.now();
+        await prismaClient.website_tick.create({
+          data: {
+            response_time_ms: endTime - startTime,
+            status: "Down",
+            region_id: REGION_ID,
+            website_id: websiteId,
+          },
+        });
+        console.log(` ${url} is DOWN`);
+        resolve();
+      });
+  });
+}
 
 async function main() {
-    while(1) {
-        const response = await xReadGroup(REGION_ID, WORKER_ID);
+  console.log(` Worker ${WORKER_ID} started in region ${REGION_ID}`);
+  await ensureRegionExists();
 
-        if (!response) {
-            continue;
-        }
+  while (true) {
+    try {
+      const response = await xReadGroup(REGION_ID, WORKER_ID);
 
-        let promises = response.map(({message}) => fetchWebsite(message.url, message.id))
-        await Promise.all(promises);
-        console.log(promises.length);
+      if (!response || response.length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        continue;
+      }
 
-        xAckBulk(REGION_ID, response.map(({id}) => id));
+      const promises = response.map(({ message }) =>
+        fetchWebsite(message.url, message.id)
+      );
+      await Promise.all(promises);
+
+      await xAckBulk(REGION_ID, response.map(({ id }) => id));
+      console.log(`Processed ${response.length} websites`);
+    } catch (error) {
+      console.error("Worker error:", error);
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  }
 }
 
-async function fetchWebsite(url: string, websiteId: string) {
-    return new Promise<void>((resolve, reject) => {
-        const startTime = Date.now();
-
-        axios.get(url)
-            .then(async () => { 
-                const endTime = Date.now();
-                await prismaClient.website_tick.create({
-                    data: {
-                        response_time_ms: endTime - startTime,
-                        status: "Up",
-                        region_id: REGION_ID,
-                        website_id: websiteId
-                    }
-                })
-                resolve()
-            })
-            .catch(async () => {
-                const endTime = Date.now();
-                await prismaClient.website_tick.create({
-                    data: {
-                        response_time_ms: endTime - startTime,
-                        status: "Down",
-                        region_id: REGION_ID,
-                        website_id: websiteId
-                    }
-                })
-                resolve()
-            })
-    })
-}
-
-main();
+main().catch(console.error);
