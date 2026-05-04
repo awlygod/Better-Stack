@@ -43,6 +43,9 @@ A distributed website uptime monitoring system. Add any URL and BetterStack cont
 11. Multi region workers
     
     Reduces latency variance and reflects real world monitoring setups.
+12. Exponential backoff over fixed interval retries because it gives a failing service time to recover without hammering it repeatedly in quick succession.
+13. 90 second pusher interval over the original 30 seconds because it prevents the pusher from creating duplicate job chains for websites that are mid-retry, eliminating the need for a more complex inflight tracking system.
+14. Unknown tick status over Down on retries because it preserves the integrity of the health history and distinguishes transient failures from confirmed outages.
 
 ---
 
