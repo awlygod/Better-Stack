@@ -30,7 +30,7 @@ async function pushWebsitesToQueue() {
   }
 }
 
-setInterval(pushWebsitesToQueue, 30000);  // making this as 90s because the error retries a job after 40s also that creates a conflict
+setInterval(pushWebsitesToQueue, 90000);  // making this as 90s because the error retries a job after 40s also that creates a conflict
 pushWebsitesToQueue();
 
 console.log("Pusher running, pushing websites every 30s");
