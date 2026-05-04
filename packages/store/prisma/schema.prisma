@@ -25,7 +25,7 @@ model website {
   id            String  @id    @default(uuid()) 
   url           String
   user_id       String
-  time_added     DateTime
+  time_added     DateTime      @default(now())
   ticks         website_tick[]
   user          user    @relation(fields: [user_id], references: [id])
 }
@@ -33,7 +33,7 @@ model website {
 model region {
   id            String  @id    @default(uuid()) 
   name          String
-  tickes        website_tick[]
+  ticks        website_tick[]
 }
 
 model website_tick {
@@ -51,4 +51,14 @@ enum website_status {
   Up
   Down
   Unknown
+}
+
+model job_failure {
+  id             String   @id @default(uuid())
+  jobId          String
+  websiteId      String
+  url            String
+  totalAttempts  Int
+  finalError     String
+  failedAt       DateTime
 }

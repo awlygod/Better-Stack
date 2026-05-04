@@ -1,15 +1,12 @@
 import "dotenv/config";
+import { v4 as uuidv4 } from "uuid";
 import { prismaClient } from "store/client";
 import { xAddBulk } from "redisstream/client";
 
 async function pushWebsitesToQueue() {
   try {
-    // Pull all websites from database
     const websites = await prismaClient.website.findMany({
-      select: {
-        id: true,
-        url: true,
-      },
+      select: { id: true, url: true },
     });
 
     if (websites.length === 0) {
@@ -17,18 +14,23 @@ async function pushWebsitesToQueue() {
       return;
     }
 
-    // Push all to Redis stream
-    await xAddBulk(websites);
-    console.log(`✅ Pushed ${websites.length} websites to queue`);
+    const jobs = websites.map((site) => ({
+      url: site.url,
+      id: site.id,
+      jobId: uuidv4(),
+      retryCount: 0,
+      maxRetries: 3,
+      nextRunAt: Date.now(),
+    }));
+
+    await xAddBulk(jobs);
+    console.log(`Pushed ${websites.length} websites to queue`);
   } catch (error) {
     console.error("Error pushing websites:", error);
   }
 }
 
-// Run every 30 seconds
 setInterval(pushWebsitesToQueue, 30000);
-
-// Run once on startup
 pushWebsitesToQueue();
 
-console.log("🔔 Pusher running (pushes websites every 30s)");
+console.log("Pusher running, pushing websites every 30s");

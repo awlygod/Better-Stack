@@ -131,7 +131,7 @@ export default function Home() {
   if (!mounted) return <div style={{ minHeight: "100vh", background: "#080808" }} />;
 
   const isLoggedIn = jwt || localStorage.getItem("jwt");
-  const isSuccess = error.includes("✅");
+  const isSuccess = error.includes("-");
 
   return (
     <>
