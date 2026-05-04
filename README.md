@@ -7,14 +7,18 @@ A distributed website uptime monitoring system. Add any URL and BetterStack cont
 ## How it works
 
 
-<img width="1820" height="723" alt="image" src="https://github.com/user-attachments/assets/abd3737e-ff9d-4611-b6e1-adb50c15f298" />
+<img width="1163" height="594" alt="image" src="https://github.com/user-attachments/assets/6052e56f-1e85-4e0f-958f-99f237778f8e" />
 
 
 
-1. **Pusher** queries all websites every 30 seconds and pushes them into a Redis stream
-2. **Workers** read from the stream, make HTTP requests to each URL, record the status and response time
-3. **API** serves the results to the frontend on demand
-4. **Frontend** shows live status, response times, and the last 10 health checks per site
+
+1.  Pusher queries PostgreSQL every 90 seconds and writes all website jobs into a Redis Stream.
+2.  Workers read jobs from the stream using consumer groups, ensuring no duplicate processing.
+3.  Each worker checks nextRunAt before executing, skipping jobs scheduled for the future.
+4.  Worker makes an HTTP request to the target URL and records the result in PostgreSQL.
+5.  On success, writes an Up tick and acknowledges the message.
+6.  On failure, increments retryCount and re-enqueues the job with exponential backoff, writing an Unknown tick.
+7.  If retryCount exceeds maxRetries, writes a Down tick and sends the job to the dead letter queue, persisted in both Redis and PostgreSQL.
 
   Multiple workers can run in parallel across different regions, they share the same consumer group so there's no duplicate processing.
 
