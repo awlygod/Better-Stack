@@ -16,7 +16,7 @@ A distributed website uptime monitoring system. Add any URL and BetterStack cont
 3. **API** serves the results to the frontend on demand
 4. **Frontend** shows live status, response times, and the last 10 health checks per site
 
-Multiple workers can run in parallel across different regions, they share the same consumer group so there's no duplicate processing.
+  Multiple workers can run in parallel across different regions, they share the same consumer group so there's no duplicate processing.
 
 
 ## Why this design ?
