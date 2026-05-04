@@ -18,6 +18,28 @@ A distributed website uptime monitoring system. Add any URL and BetterStack cont
 
 Multiple workers can run in parallel across different regions, they share the same consumer group so there's no duplicate processing.
 
+
+## Why this design ?
+
+1. Redis Streams over Kafka
+   
+   Chosen for simplicity and low ops overhead. Gives persistence and consumer groups without running a Kafka cluster.
+3. Consumer groups for workers
+   
+   Ensures each job is processed once while allowing horizontal scaling across workers.
+5. Pusher and worker separation
+   
+   Decouples scheduling from execution so workers can scale independently.
+7. Polling instead of event driven
+   
+   Uptime monitoring is inherently pull based. Polling keeps behavior predictable.
+9. PostgreSQL for storage
+    
+   Relational model fits time series checks and querying patterns well.
+11. Multi region workers
+    
+    Reduces latency variance and reflects real world monitoring setups.
+
 ---
 
 ## Tech Stack
